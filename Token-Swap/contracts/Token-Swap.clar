@@ -86,3 +86,28 @@
         (asserts! (is-eq tx-sender contract-owner) err-owner-only)
         (var-set paused (not (var-get paused)))
         (ok true)))
+
+;; Add liquidity
+(define-public (add-liquidity (token-a-amount uint) (token-b-amount uint))
+    (begin
+        (asserts! (not (var-get paused)) (err u104))
+        (asserts! (and (> token-a-amount u0) (> token-b-amount u0)) err-invalid-amount)
+        
+        (let (
+            (current-share (default-to u0 (get share-percentage (map-get? liquidity-providers tx-sender))))
+            (total-liquidity (+ (var-get token-a-balance) (var-get token-b-balance)))
+            (new-share-percentage (/ (* token-a-amount u100) total-liquidity))
+        )
+            ;; Update provider info
+            (map-set liquidity-providers tx-sender
+                {
+                    token-a-provided: token-a-amount,
+                    token-b-provided: token-b-amount,
+                    share-percentage: (+ current-share new-share-percentage)
+                })
+            
+            ;; Update pool balances
+            (var-set token-a-balance (+ (var-get token-a-balance) token-a-amount))
+            (var-set token-b-balance (+ (var-get token-b-balance) token-b-amount))
+            
+            (ok true))))
